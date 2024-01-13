@@ -22,7 +22,7 @@ int Sampler::estimate_max_length(int prompt_tokens, int token_limit, bool use_li
 }
 
 llama_batch Sampler::configure_batch(int num_samples, std::vector<llama_token> &tokens, llama_context *ctx) {
-    llama_batch batch = llama_batch_init(std::max(tokens.size(), (size_t) num_samples), 0, 1);
+    llama_batch batch = llama_batch_init(tokens.size(), 0, 1);
 
     // evaluate the initial prompt
     for (size_t i = 0; i < tokens.size(); ++i) {
@@ -162,7 +162,7 @@ json Sampler::process_batch(BatchProcessParams &params) {
 
     llama_context_params ctx_params = llama_context_default_params();
     ctx_params.n_ctx = cache_size;
-    ctx_params.n_batch = params.num_samples;
+    ctx_params.n_batch = std::max(cache_size, params.num_samples);
     ctx_params.n_threads = params.batch_threads;
     ctx_params.n_threads_batch = params.batch_threads;
 
