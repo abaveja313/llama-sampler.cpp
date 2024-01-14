@@ -154,7 +154,7 @@ json Sampler::process_batch(BatchProcessParams &params) {
 
     std::vector<llama_token> tokens;
     tokens = ::llama_tokenize(model, prompt, true);
-    int max_tokens = this->estimate_max_length(params.prompt_context_size, params.upper_token_limit,
+    int max_tokens = this->estimate_max_length(tokens.size(), params.upper_token_limit,
                                                params.token_estimate);
 
     LOG_TEE("%s: Max Tokens Estimate: %d\n", __func__, max_tokens);
