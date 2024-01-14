@@ -7,16 +7,14 @@
 #include <cstdio>
 #include <string>
 #include <vector>
-#include <unordered_map>
 #include <iostream>
-#include <fstream>
 
 using json = nlohmann::json;
 
 
-int Sampler::estimate_max_length(int prompt_tokens, int token_limit, bool use_limit) {
-    if (use_limit) {
-        return token_limit;
+int Sampler::estimate_max_length(int prompt_tokens, int token_limit, int token_estimate) {
+    if (token_estimate != -1) {
+        return std::min(token_estimate, token_limit);
     }
     return std::min(static_cast<int>(2.15 * prompt_tokens), token_limit);
 }
@@ -138,13 +136,12 @@ std::vector<std::string> Sampler::generate_streams(GenerateStreamsParams &params
         if (llama_decode(params.context, params.batch)) {
             throw std::runtime_error("Error to evaluate");
         }
-        const auto t_main_end = ggml_time_us();
-        LOG_TEE("%s: decoded %d tokens in %.2f s, speed: %.2f t/s\n",
-                __func__, n_decoded, (t_main_end - t_main_start) / 1000000.0f,
-                n_decoded / ((t_main_end - t_main_start) / 1000000.0f));
-        return streams;
-
     }
+    const auto t_main_end = ggml_time_us();
+    LOG_TEE("%s: decoded %d tokens in %.2f s, speed: %.2f t/s\n",
+            __func__, n_decoded, (t_main_end - t_main_start) / 1000000.0f,
+            n_decoded / ((t_main_end - t_main_start) / 1000000.0f));
+    return streams;
 }
 
 
@@ -153,12 +150,17 @@ json Sampler::process_batch(BatchProcessParams &params) {
     llama_model *model = this->load_model(params.gpu_layers, params.model_path);
     std::string prompt = this->format_prompt(params.python_code);
 
-    LOG_TEE("%s: Prompt: %s", __func__, prompt.c_str());
+    LOG_TEE("%s: Prompt: %s\n", __func__, prompt.c_str());
 
     std::vector<llama_token> tokens;
     tokens = ::llama_tokenize(model, prompt, true);
-    int max_tokens = this->estimate_max_length(params.prompt_context_size, params.upper_token_limit, params.use_limit);
+    int max_tokens = this->estimate_max_length(params.prompt_context_size, params.upper_token_limit,
+                                               params.token_estimate);
+
+    LOG_TEE("%s: Max Tokens Estimate: %d\n", __func__, max_tokens);
     int cache_size = this->calculate_key_value_cache(tokens.size(), max_tokens, params.num_samples);
+
+    LOG_TEE("%s: Cache Size Estimate: %d\n", __func__, cache_size);
 
     llama_context_params ctx_params = llama_context_default_params();
     ctx_params.n_ctx = cache_size;

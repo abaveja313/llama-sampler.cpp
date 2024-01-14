@@ -24,10 +24,11 @@ struct BatchProcessParams {
     float top_p;
     float temp;
     int num_samples;
-    bool use_limit;
+    int token_estimate;
 
-    NLOHMANN_DEFINE_TYPE_INTRUSIVE(BatchProcessParams, python_code, model_path, gpu_layers, batch_threads, prompt_context_size,
-            upper_token_limit, top_k, top_p, temp, num_samples, use_limit);
+    NLOHMANN_DEFINE_TYPE_INTRUSIVE(BatchProcessParams, python_code, model_path, gpu_layers, batch_threads,
+            prompt_context_size,
+            upper_token_limit, top_k, top_p, temp, num_samples, token_estimate)
 };
 
 struct GenerateStreamsParams {
@@ -48,7 +49,7 @@ struct GenerateStreamsParams {
             llama_batch batch,
             int max_tokens
     ) {
-        GenerateStreamsParams params;
+        GenerateStreamsParams params{};
         params.model = model;
         params.context = context;
         params.batch = batch;
@@ -63,9 +64,7 @@ struct GenerateStreamsParams {
 
 class Sampler {
 private:
-    int estimate_max_length(int prompt_tokens, int token_limit, bool use_limit);
-
-    llama_model load_model(int gpu_layers, std::string &path, llama_model &output);
+    int estimate_max_length(int prompt_tokens, int token_limit, int token_estimate);
 
     llama_token
     sample_candidate_token(llama_context *ctx, std::vector<llama_token_data> &candidates, int top_k, float top_p,
